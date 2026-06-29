@@ -1,572 +1,108 @@
-bash
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate DOCX in Browser</title>
+    <!-- docx library -->
+    <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+    <!-- FileSaver for saving files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+    <h1>JavaScript to DOCX Demo</h1>
+    <button id="generate">Buat Dokumen</button>
 
-cat > /home/claude/script_lengkap.js << 'JSEOF'
-const {
-  Document, Packer, Paragraph, TextRun, HeadingLevel,
-  AlignmentType, LevelFormat, BorderStyle, PageNumber,
-  NumberFormat, WidthType, Table, TableRow, TableCell,
-  ShadingType, VerticalAlign
-} = require('docx');
-const fs = require('fs');
+    <script>
+        // Ambil class dari docx
+        const { Paragraph, TextRun, AlignmentType, BorderStyle, Document, Packer } = docx;
 
-// === COLOR PALETTE ===
-const C = {
-  navy:    "1A3C5E",
-  blue:    "2E75B6",
-  darkB:   "0F4C81",
-  red:     "8B0000",
-  darkRed: "C00000",
-  orange:  "B85C00",
-  green:   "1E6B2E",
-  gray:    "555555",
-  light:   "777777",
-  black:   "222222",
-  penguji: "7B1A1A",
-  mahasis: "1A3A7B",
-  tipsCol: "2D6B2D",
-};
+        // Warna default
+        const C = {
+            darkB: "00008B",
+            blue: "0000FF",
+            navy: "000080"
+        };
 
-// === HELPER FUNCTIONS ===
-const sp = (b=0, a=0) => ({ spacing: { before: b, after: a }});
+        // Fungsi spacing
+        function sp(b, a) {
+            return { spacing: { before: b, after: a } };
+        }
 
-function bigTitle(text, color=C.darkB) {
-  return new Paragraph({
-    alignment: AlignmentType.CENTER,
-    ...sp(0, 80),
-    children: [new TextRun({ text, bold: true, size: 36, color, font: "Arial" })]
-  });
-}
+        // Fungsi dari script_lengkap.js
+        function bigTitle(text, color = C.darkB) {
+            return new Paragraph({
+                alignment: AlignmentType.CENTER,
+                ...sp(0, 80),
+                children: [new TextRun({ text, bold: true, size: 36, color, font: "Arial" })]
+            });
+        }
 
-function subTitle(text, color=C.blue) {
-  return new Paragraph({
-    alignment: AlignmentType.CENTER,
-    ...sp(0, 60),
-    children: [new TextRun({ text, bold: true, size: 24, color, font: "Arial" })]
-  });
-}
+        function subTitle(text, color = C.blue) {
+            return new Paragraph({
+                alignment: AlignmentType.CENTER,
+                ...sp(0, 60),
+                children: [new TextRun({ text, bold: true, size: 24, color, font: "Arial" })]
+            });
+        }
 
-function sectionBanner(text, color=C.navy) {
-  return new Paragraph({
-    ...sp(500, 100),
-    border: {
-      bottom: { style: BorderStyle.THICK, size: 8, color, space: 1 },
-      top: { style: BorderStyle.THICK, size: 8, color, space: 1 },
-    },
-    children: [new TextRun({ text: `  ${text}  `, bold: true, size: 28, color: "FFFFFF", font: "Arial",
-      shading: { fill: color, type: "clear" } })]
-  });
-}
+        function sectionBanner(text, color = C.navy) {
+            return new Paragraph({
+                ...sp(500, 100),
+                border: {
+                    bottom: { style: BorderStyle.THICK, size: 8, color, space: 1 },
+                    top: { style: BorderStyle.THICK, size: 8, color, space: 1 },
+                },
+                children: [new TextRun({
+                    text: `  ${text}  `,
+                    bold: true,
+                    size: 28,
+                    color: "FFFFFF",
+                    font: "Arial",
+                    shading: { fill: color, type: "clear" }
+                })]
+            });
+        }
 
-function sectionHeader(icon, text, color=C.navy) {
-  return new Paragraph({
-    ...sp(440, 80),
-    border: { bottom: { style: BorderStyle.SINGLE, size: 6, color, space: 1 } },
-    children: [
-      new TextRun({ text: `${icon} `, size: 24, color, font: "Arial" }),
-      new TextRun({ text: text.toUpperCase(), bold: true, size: 24, color, font: "Arial" }),
-    ]
-  });
-}
+        function sectionHeader(icon, text, color = C.navy) {
+            return new Paragraph({
+                ...sp(440, 80),
+                border: { bottom: { style: BorderStyle.SINGLE, size: 6, color, space: 1 } },
+                children: [
+                    new TextRun({ text: `${icon} `, size: 24, color, font: "Arial" }),
+                    new TextRun({ text: text.toUpperCase(), bold: true, size: 24, color, font: "Arial" }),
+                ]
+            });
+        }
 
-function slideTag(num, title) {
-  return new Paragraph({
-    ...sp(340, 60),
-    children: [
-      new TextRun({ text: `🎞 SLIDE ${num}  `, bold: true, size: 20, color: C.blue, font: "Arial" }),
-      new TextRun({ text: `— ${title.toUpperCase()}`, bold: true, size: 20, color: C.navy, font: "Arial" }),
-    ]
-  });
-}
+        function slideTag(num, title) {
+            return new Paragraph({
+                ...sp(340, 60),
+                children: [
+                    new TextRun({ text: `Slide ${num}: `, bold: true, size: 20, color: C.darkB, font: "Arial" }),
+                    new TextRun({ text: title, size: 20, font: "Arial" })
+                ]
+            });
+        }
 
-function timer(t) {
-  return new Paragraph({
-    ...sp(40, 40),
-    children: [new TextRun({ text: `⏱  ${t}`, italics: true, size: 19, color: C.orange, font: "Arial" })]
-  });
-}
+        // Event tombol
+        document.getElementById("generate").addEventListener("click", () => {
+            const doc = new Document({
+                sections: [{
+                    children: [
+                        bigTitle("Judul Besar"),
+                        subTitle("Sub Judul"),
+                        sectionBanner("Banner Section"),
+                        sectionHeader("📌", "Header Section"),
+                        slideTag(1, "Pengantar")
+                    ]
+                }]
+            });
 
-function scriptLine(text) {
-  return new Paragraph({
-    ...sp(80, 60),
-    indent: { left: 400 },
-    children: [new TextRun({ text, size: 22, color: C.black, font: "Arial" })]
-  });
-}
-
-function stageNote(text) {
-  return new Paragraph({
-    ...sp(40, 60),
-    indent: { left: 400 },
-    children: [new TextRun({ text: `📌 ${text}`, italics: true, size: 19, color: C.light, font: "Arial" })]
-  });
-}
-
-function bullet(text, indent=720) {
-  return new Paragraph({
-    ...sp(40, 40),
-    indent: { left: indent },
-    children: [
-      new TextRun({ text: "▸  ", bold: true, color: C.blue, size: 22, font: "Arial" }),
-      new TextRun({ text, size: 22, color: C.black, font: "Arial" })
-    ]
-  });
-}
-
-function divider(color="DDDDDD") {
-  return new Paragraph({
-    ...sp(20, 20),
-    border: { bottom: { style: BorderStyle.SINGLE, size: 2, color, space: 1 } },
-    children: []
-  });
-}
-
-function qaBox(type, speaker, text) {
-  // type: 'Q' (penguji) or 'A' (mahasiswa)
-  const isQ = type === 'Q';
-  const bgColor = isQ ? "FFF3F3" : "F0F5FF";
-  const labelColor = isQ ? C.penguji : C.mahasis;
-  const label = isQ ? `❓ ${speaker}` : `💬 ${speaker}`;
-  return [
-    new Paragraph({
-      ...sp(120, 0),
-      children: [new TextRun({ text: label, bold: true, size: 21, color: labelColor, font: "Arial" })]
-    }),
-    new Paragraph({
-      ...sp(0, 80),
-      indent: { left: 400 },
-      border: { left: { style: BorderStyle.SINGLE, size: 12, color: labelColor, space: 8 } },
-      children: [new TextRun({ text, size: 21, color: C.black, font: "Arial" })]
-    }),
-  ];
-}
-
-function tipBox(text) {
-  return new Paragraph({
-    ...sp(60, 60),
-    indent: { left: 400 },
-    children: [
-      new TextRun({ text: "💡 Tips: ", bold: true, size: 20, color: C.tipsCol, font: "Arial" }),
-      new TextRun({ text, italics: true, size: 20, color: C.tipsCol, font: "Arial" })
-    ]
-  });
-}
-
-function qNum(n, topic) {
-  return new Paragraph({
-    ...sp(300, 60),
-    children: [
-      new TextRun({ text: `PERTANYAAN ${n}`, bold: true, size: 22, color: C.penguji, font: "Arial" }),
-      new TextRun({ text: `  ·  ${topic}`, size: 22, color: C.gray, font: "Arial" }),
-    ]
-  });
-}
-
-function empty(before=80) {
-  return new Paragraph({ ...sp(before, 0), children: [] });
-}
-
-// =============================================
-// BUILD DOCUMENT
-// =============================================
-const children = [];
-
-// ─── COVER ────────────────────────────────────
-children.push(
-  empty(0),
-  bigTitle("SCRIPT PRESENTASI & SIMULASI UJIAN"),
-  bigTitle("DESIMINASI HASIL PENELITIAN", C.blue),
-  empty(60),
-  subTitle("Pengaruh Model Predict-Observe-Explain (POE) Berbantuan Media", C.navy),
-  subTitle("Augmented Reality (AR) Terhadap Kemampuan Berpikir Kritis", C.navy),
-  subTitle("Murid Pada Materi Sistem Ekskresi", C.navy),
-  empty(60),
-  new Paragraph({ alignment: AlignmentType.CENTER, ...sp(0,40),
-    children: [new TextRun({ text: "Khoirunisa Ainul Fatihah  ·  NIM 1304622082  ·  Pendidikan Biologi FMIPA UNJ  ·  Juni 2026",
-      size: 20, color: C.gray, font: "Arial" })]
-  }),
-  empty(40),
-  new Paragraph({ alignment: AlignmentType.CENTER, ...sp(0,40),
-    children: [new TextRun({ text: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-      size: 18, color: C.blue, font: "Arial" })]
-  }),
-  new Paragraph({ alignment: AlignmentType.CENTER, ...sp(40,240),
-    children: [
-      new TextRun({ text: "Dokumen ini berisi dua bagian: ", size: 21, color: C.gray, font: "Arial" }),
-      new TextRun({ text: "① Script Presentasi 10 Menit", bold: true, size: 21, color: C.navy, font: "Arial" }),
-      new TextRun({ text: "  ·  ", size: 21, color: C.gray, font: "Arial" }),
-      new TextRun({ text: "② Simulasi Tanya Jawab Penguji + Jawaban", bold: true, size: 21, color: C.penguji, font: "Arial" }),
-    ]
-  }),
-);
-
-// ─── BAGIAN 1: SCRIPT PRESENTASI ──────────────
-children.push(
-  sectionBanner("BAGIAN 1 — SCRIPT PRESENTASI  (Durasi: 10 Menit  ·  18 Slide)", C.navy),
-);
-
-// PEMBUKAAN
-children.push(
-  sectionHeader("◆", "PEMBUKAAN"),
-  slideTag(1, "Cover / Halaman Judul"),
-  timer("0:00 – 0:40  (±40 detik)"),
-  scriptLine("Assalamualaikum warahmatullahi wabarakatuh."),
-  scriptLine("Yang terhormat Ketua Penguji Bapak Ade Suryanda, M.Si., Ibu Dr. Eka Putri Azrai, M.Si., dan Ibu Nailul Rahmi Aulya, M.Si. selaku dosen penguji, serta Ibu Dr. Supriyatin, M.S. dan Ibu Dra. Ratna Dewi Wulaningsih, M.Si. selaku dosen pembimbing saya."),
-  scriptLine("Izinkan saya mempresentasikan hasil penelitian skripsi yang berjudul: "Pengaruh Model Predict-Observe-Explain (POE) Berbantuan Media Augmented Reality terhadap Kemampuan Berpikir Kritis Murid pada Materi Sistem Ekskresi.""),
-  stageNote("Berdiri tegak, senyum, kontak mata merata ke seluruh penguji."),
-  divider(),
-);
-
-// PENDAHULUAN
-children.push(
-  sectionHeader("◆", "PENDAHULUAN"),
-  slideTag(2, "Latar Belakang"),
-  timer("0:40 – 1:50  (±70 detik)"),
-  scriptLine("Abad 21 menuntut murid menguasai kemampuan berpikir kritis. Namun faktanya, kemampuan ini masih sangat rendah di banyak daerah Indonesia."),
-  scriptLine("Data menunjukkan: di Jakarta Timur rata-rata kemampuan berpikir kritis murid SMA hanya 58% — kategori rendah. Di SMAN 113 Jakarta sendiri, tempat saya meneliti, kondisi serupa juga ditemukan."),
-  scriptLine("Terdapat tiga faktor utama penyebabnya: sulitnya memvisualisasikan konsep, minimnya variasi model pembelajaran, dan dominasi pembelajaran berbasis hafalan."),
-  scriptLine("Materi sistem ekskresi menjadi konteks yang relevan karena 61% murid kesulitan memahaminya — struktur organnya kompleks dan tidak bisa diamati langsung."),
-  scriptLine("Dari sinilah saya mengusulkan kombinasi model POE dengan media Augmented Reality sebagai solusi inovatif untuk mengatasi masalah tersebut."),
-  stageNote("Tunjuk setiap poin di slide secara berurutan. Jaga ritme bicara."),
-  divider(),
-
-  slideTag(3, "Identifikasi, Rumusan & Tujuan"),
-  timer("1:50 – 2:20  (±30 detik)"),
-  scriptLine("Dari latar belakang tersebut, saya mengidentifikasi enam masalah inti — mulai dari rendahnya berpikir kritis, keterbatasan visualisasi, hingga belum adanya penelitian yang mengombinasikan POE dengan AR secara langsung pada sistem ekskresi."),
-  scriptLine("Rumusan masalahnya: "Apakah terdapat pengaruh model pembelajaran POE berbantuan media AR terhadap kemampuan berpikir kritis murid pada materi sistem ekskresi?""),
-  scriptLine("Tujuannya: untuk mengetahui pengaruh tersebut secara empiris melalui penelitian kuasi eksperimen."),
-  stageNote("Ucapkan rumusan masalah dengan nada tegas dan jelas."),
-  divider(),
-);
-
-// KAJIAN PUSTAKA
-children.push(
-  sectionHeader("◆", "KAJIAN PUSTAKA"),
-  slideTag(4, "Deskripsi Konseptual"),
-  timer("2:20 – 3:00  (±40 detik)"),
-  scriptLine("Penelitian ini berlandaskan tiga konsep utama:"),
-  bullet("Kemampuan Berpikir Kritis — mengacu pada Facione (2015) dengan enam indikator: interpretasi, analisis, evaluasi, inferensi, eksplanasi, dan regulasi diri."),
-  bullet("Model POE — model konstruktivisme dengan tiga tahap: Predict, Observe, dan Explain. Ketiganya secara sinergis melatih kemampuan analisis dan evaluasi murid."),
-  bullet("Media AR — khususnya Assemblr EDU, divisualisasikan melalui smartphone, menampilkan objek 3D interaktif secara real time."),
-  scriptLine("Kombinasi POE dengan AR sangat relevan: AR memperkuat kualitas tahap Observe melalui visualisasi 3D, sementara POE memberikan kerangka berpikir yang sistematis untuk memaksimalkan pengalaman tersebut."),
-  stageNote("Tunjuk diagram di slide. Jangan terburu-buru."),
-  divider(),
-
-  slideTag("5–6", "Penelitian Relevan, Kerangka Berpikir & Hipotesis"),
-  timer("3:00 – 3:30  (±30 detik)"),
-  scriptLine("Penelitian terdahulu membuktikan secara terpisah: model POE efektif meningkatkan berpikir kritis (Fitrianingsih et al., 2021), dan media AR efektif meningkatkan pemahaman konsep (Andriani & Ramadani, 2022)."),
-  scriptLine("Namun, belum ada yang mengombinasikan keduanya secara langsung pada materi sistem ekskresi — di sinilah kebaruan penelitian saya."),
-  scriptLine("Hipotesis: terdapat pengaruh signifikan model POE berbantuan AR terhadap kemampuan berpikir kritis murid pada materi sistem ekskresi."),
-  stageNote("Sebutkan 1–2 penelitian relevan untuk memperkuat argumen."),
-  divider(),
-);
-
-// METODOLOGI
-children.push(
-  sectionHeader("◆", "METODOLOGI PENELITIAN"),
-  slideTag("7–10", "Metode, Desain, Populasi & Instrumen"),
-  timer("3:30 – 4:30  (±60 detik)"),
-  scriptLine("Penelitian ini menggunakan metode kuasi eksperimen dengan desain pretest-posttest control group design."),
-  bullet("Kelas Eksperimen (n=33): Model POE + Media AR Assemblr EDU"),
-  bullet("Kelas Kontrol (n=33): Model TSTS + Buku Teks"),
-  scriptLine("Total sampel 66 murid kelas XI Peminatan Biologi SMAN 113 Jakarta. Teknik pengambilan sampel dilakukan secara bertahap: purposive sampling untuk lokasi, cluster sampling untuk kelas, dan simple random sampling untuk individu."),
-  scriptLine("Instrumen: 12 soal uraian yang mencakup enam indikator berpikir kritis Facione (2015), dengan skor 0–4 per soal. Validitas diuji dengan product moment Pearson dan reliabilitas dengan Alpha Cronbach."),
-  scriptLine("Analisis data menggunakan uji ANCOVA, dengan nilai pretest sebagai kovariat untuk mengendalikan perbedaan kemampuan awal antar kelas secara statistik."),
-  stageNote("Slide desain sangat penting — pastikan penguji dapat membacanya dengan jelas."),
-  divider(),
-);
-
-// HASIL PENELITIAN
-children.push(
-  sectionHeader("◆", "HASIL PENELITIAN"),
-  slideTag(11, "Deskripsi Data — Tes & Kategori"),
-  timer("4:30 – 5:30  (±60 detik)"),
-  scriptLine("Sebelum perlakuan, kondisi awal kedua kelas setara — seluruh murid berada di kategori rendah dan sangat rendah, sehingga layak dibandingkan."),
-  scriptLine("Setelah perlakuan, terjadi peningkatan signifikan:"),
-  bullet("Kelas POE + AR: rata-rata posttest 70,42 — mayoritas murid mencapai kategori sangat tinggi."),
-  bullet("Kelas TSTS + buku teks: rata-rata posttest 54,21 — mayoritas hanya pada kategori sedang."),
-  scriptLine("Ini sudah menjadi indikasi awal bahwa model POE berbantuan AR lebih efektif mendorong murid ke tingkat berpikir kritis yang lebih tinggi."),
-  stageNote("Tunjuk Tabel 9 dan Tabel 10 secara bergantian."),
-  divider(),
-
-  slideTag(12, "Indikator Berpikir Kritis & Keterlaksanaan"),
-  timer("5:30 – 6:00  (±30 detik)"),
-  scriptLine("Peningkatan terjadi pada seluruh enam indikator berpikir kritis di kelas POE + AR, secara konsisten lebih tinggi dari kelas kontrol."),
-  bullet("Indikator tertinggi: Regulasi Diri — murid aktif merefleksi saat prediksi tidak sesuai hasil observasi."),
-  bullet("Indikator terendah: Eksplanasi — menyusun argumen ilmiah secara runtut memerlukan latihan lebih intensif."),
-  scriptLine("Keterlaksanaan pembelajaran sangat baik: kelas eksperimen 98,84% dan kelas kontrol 95,71%."),
-  stageNote("Tunjuk Gambar 2 grafik batang indikator."),
-  divider(),
-
-  slideTag(13, "Uji Prasyarat Analisis"),
-  timer("6:00 – 6:30  (±30 detik)"),
-  scriptLine("Sebelum uji hipotesis, empat uji prasyarat ANCOVA telah saya lakukan dan seluruhnya terpenuhi:"),
-  bullet("Normalitas residual (Shapiro-Wilk): sig. > 0,05 pada kedua kelas → data berdistribusi normal."),
-  bullet("Homogenitas variansi (Levene's): sig. 0,731 > 0,05 → variansi homogen."),
-  bullet("Linearitas: R² kelas eksperimen 0,509 dan kelas kontrol 0,130 → hubungan linear terbentuk."),
-  bullet("Homogenitas koefisien regresi: sig. 0,123 > 0,05 → asumsi ANCOVA terpenuhi."),
-  stageNote("Ucapkan dengan percaya diri — ini menunjukkan ketelitian metodologi Anda."),
-  divider(),
-
-  slideTag(14, "Pengujian Hipotesis — ANCOVA"),
-  timer("6:30 – 7:15  (±45 detik)"),
-  scriptLine("Hasil uji ANCOVA menunjukkan:"),
-  bullet("Nilai F = 12,344 dengan signifikansi 0,001 — jauh di bawah alpha 0,05."),
-  bullet("H₀ ditolak. H₁ diterima: terdapat pengaruh signifikan model POE berbantuan AR."),
-  bullet("Parsial Eta Kuadrat (η²) = 0,164 ≥ 0,14 → tergolong efek besar (Cohen, 1988)."),
-  scriptLine("Rata-rata terkoreksi posttest kelas POE + AR sebesar 68,954, lebih tinggi 13,272 poin dibandingkan kelas TSTS + buku teks sebesar 55,682. Selisih ini signifikan secara statistik (sig. 0,001)."),
-  stageNote("Slide kunci — bicaralah perlahan, pastikan setiap angka terucap jelas."),
-  divider(),
-);
-
-// PEMBAHASAN
-children.push(
-  sectionHeader("◆", "PEMBAHASAN"),
-  slideTag(15, "Pembahasan Hasil Penelitian"),
-  timer("7:15 – 8:15  (±60 detik)"),
-  scriptLine("Mengapa model POE berbantuan AR lebih efektif? Ada tiga alasan utama:"),
-  bullet("Sintaks POE yang terstruktur melatih murid berpikir ilmiah secara sistematis. Pada tahap Predict, murid mengaktifkan pengetahuan awal dan menginterpretasi masalah. Tahap Observe mendorong analisis dan evaluasi. Tahap Explain melatih eksplanasi dan regulasi diri."),
-  bullet("AR Assemblr EDU memperkuat kualitas Observe. Organ sistem ekskresi yang abstrak — seperti struktur nefron — bisa diinteraksikan secara 3D melalui smartphone. Pemahaman konkret ini menjadi fondasi kuat untuk berpikir kritis."),
-  bullet("Kombinasi keduanya menciptakan siklus belajar bermakna yang saling menguatkan: AR memperkaya kualitas pengamatan, POE memberikan kerangka analisis yang terarah."),
-  scriptLine("Sebaliknya, kelas TSTS dengan buku teks lebih fokus pada komunikasi dan kolaborasi verbal, bukan analisis kritis mendalam. Gambar 2D statis tidak mampu memvisualisasikan kompleksitas sistem ekskresi."),
-  stageNote("Bagian terpanjang — kendalikan tempo, jangan terburu-buru."),
-  divider(),
-);
-
-// PENUTUP
-children.push(
-  sectionHeader("◆", "PENUTUP"),
-  slideTag(16, "Kesimpulan, Implikasi & Saran"),
-  timer("8:15 – 9:15  (±60 detik)"),
-  scriptLine("Kesimpulan penelitian saya:"),
-  bullet("Model POE berbantuan AR berpengaruh signifikan terhadap kemampuan berpikir kritis murid pada materi sistem ekskresi, dengan F=12,344, sig.=0,001, dan η²=0,164 (efek besar)."),
-  bullet("Rata-rata terkoreksi kelas POE + AR (68,954) lebih tinggi 13,272 poin dari kelas TSTS + buku teks (55,682)."),
-  bullet("Peningkatan tertinggi pada indikator regulasi diri, terendah pada eksplanasi."),
-  scriptLine("Implikasinya: temuan ini memperkuat teori konstruktivisme dan model POE + AR dapat menjadi alternatif inovatif, khususnya untuk materi biologi yang sulit diamati langsung."),
-  scriptLine("Saran: tambah alokasi waktu tahap Explain, pastikan koneksi internet stabil, dan untuk peneliti lain agar mengujicobakan pada materi biologi lain dengan lebih banyak pertemuan."),
-  stageNote("Ucapkan kesimpulan dengan nada meyakinkan — ini puncak presentasi."),
-  divider(),
-
-  slideTag("17–18", "Penutup & Terima Kasih"),
-  timer("9:15 – 10:00  (±45 detik)"),
-  scriptLine("Demikian presentasi hasil penelitian saya. Saya berharap penelitian ini dapat menjadi kontribusi nyata bagi pengembangan pembelajaran biologi, khususnya dalam memfasilitasi kemampuan berpikir kritis murid abad 21."),
-  scriptLine("Saya menyadari penelitian ini memiliki keterbatasan — terutama alokasi waktu tahap Explain dan jumlah pertemuan yang terbatas. Saya sangat terbuka terhadap masukan dari para penguji."),
-  scriptLine("Kepada Ibu Dr. Supriyatin dan Ibu Dra. Ratna Dewi Wulaningsih selaku dosen pembimbing, terima kasih atas bimbingan yang luar biasa. Kepada para penguji yang terhormat, terima kasih atas perhatian dan waktunya."),
-  scriptLine("Wassalamualaikum warahmatullahi wabarakatuh."),
-  stageNote("Senyum, berdiri tegak, tundukkan kepala sedikit sebagai tanda hormat kepada penguji."),
-);
-
-// ─── BAGIAN 2: SIMULASI TANYA JAWAB ──────────
-children.push(
-  sectionBanner("BAGIAN 2 — SIMULASI TANYA JAWAB DOSEN PENGUJI", C.penguji),
-  new Paragraph({ ...sp(80,40), alignment: AlignmentType.CENTER,
-    children: [new TextRun({ text: "Berdasarkan analisis mendalam terhadap PPT Sempro dan Skripsi 'Revisi Proposal Terbaru'",
-      italics: true, size: 20, color: C.gray, font: "Arial" })]
-  }),
-  new Paragraph({ ...sp(0,40), alignment: AlignmentType.CENTER,
-    children: [new TextRun({ text: "Pertanyaan disusun dari aspek: Konseptual · Metodologi · Instrumen · Hasil · Keterbatasan · Relevansi",
-      italics: true, size: 20, color: C.gray, font: "Arial" })]
-  }),
-  empty(60),
-);
-
-// ── Q1: Definisi Berpikir Kritis ─────────────
-children.push(
-  qNum("1", "Landasan Teori — Definisi Berpikir Kritis"),
-  divider(C.penguji),
-  ...qaBox('Q', 'Dosen Penguji',
-    'Anda menggunakan definisi berpikir kritis dari Facione (2015). Mengapa memilih Facione dibanding ahli lain seperti Ennis atau Bloom? Apa kelebihan spesifik kerangka Facione untuk konteks penelitian Anda?'),
-  ...qaBox('A', 'Saya (Khoirunisa)',
-    'Terima kasih atas pertanyaannya. Saya memilih Facione (2015) karena kerangkanya paling operasional dan terukur untuk penelitian empiris. Facione mengurai berpikir kritis menjadi enam indikator konkret — interpretasi, analisis, evaluasi, inferensi, eksplanasi, dan regulasi diri — yang masing-masing dapat diterjemahkan langsung ke dalam item soal uraian dengan taksonomi Bloom C3 hingga C6. Dibandingkan Ennis yang lebih bersifat disposisional dan deskriptif, kerangka Facione lebih mudah dioperasionalkan dalam instrumen tes. Sementara Bloom lebih bersifat hierarkis kognitif, bukan khusus untuk berpikir kritis. Selain itu, Facione juga menyertakan regulasi diri sebagai indikator — dimensi metakognitif yang sangat relevan dengan model POE, karena tahap Explain secara langsung mendorong murid merefleksikan kesesuaian prediksi dengan hasil observasi mereka.'),
-  tipBox("Sebutkan perbedaan Facione vs Ennis secara singkat jika ditanya lebih lanjut."),
-  divider(),
-);
-
-// ── Q2: Pemilihan Model TSTS sebagai kontrol ─
-children.push(
-  qNum("2", "Metodologi — Pemilihan Kelas Kontrol"),
-  divider(C.penguji),
-  ...qaBox('Q', 'Dosen Penguji',
-    'Mengapa Anda memilih model TSTS (Two Stay Two Stray) sebagai kelas kontrol, bukan menggunakan pembelajaran konvensional seperti ceramah langsung (Direct Instruction)? Apakah pemilihan ini tidak memberikan keuntungan pada kelas kontrol?'),
-  ...qaBox('A', 'Saya (Khoirunisa)',
-    'Pertanyaan yang sangat tepat. Pemilihan TSTS sebagai kelas kontrol didasarkan pada dua pertimbangan. Pertama, TSTS adalah model yang umum digunakan di SMAN 113 Jakarta sehingga mewakili kondisi riil pembelajaran di sekolah tersebut — ini menjaga validitas ekologis penelitian. Kedua, saya ingin memastikan kedua kelas tetap menerima pembelajaran yang berkualitas secara etis, bukan sekadar ceramah pasif. Saya akui bahwa TSTS memiliki keunggulan kolaboratif, namun saya juga menegaskan bahwa TSTS memiliki kelemahan dalam dimensi analisis kritis yang mendalam karena sintaksnya lebih berfokus pada komunikasi dan berbagi informasi antar kelompok, bukan pada siklus prediksi-pengamatan-penjelasan. Hal ini terbukti dari hasil: rata-rata terkoreksi kelas TSTS hanya 55,682, jauh lebih rendah dari kelas POE + AR sebesar 68,954.'),
-  tipBox("Jika diminta bandingkan dengan Direct Instruction, katakan bahwa TSTS dipilih demi keseimbangan etis dan representasi kondisi nyata lapangan."),
-  divider(),
-);
-
-// ── Q3: Perbedaan soal PPT vs Skripsi ────────
-children.push(
-  qNum("3", "Konsistensi — Jumlah Soal Berbeda antara PPT dan Skripsi"),
-  divider(C.penguji),
-  ...qaBox('Q', 'Dosen Penguji',
-    'Saya perhatikan dalam PPT Sempro Anda disebutkan instrumen menggunakan 15 soal uraian, namun di skripsi final Anda hanya menggunakan 12 soal. Apa yang menyebabkan perbedaan ini? Apakah ada soal yang gugur dalam uji validitas?'),
-  ...qaBox('A', 'Saya (Khoirunisa)',
-    'Terima kasih atas ketelitian Bapak/Ibu. Benar sekali, terdapat perubahan jumlah soal dari 15 menjadi 12 butir. Hal ini terjadi karena setelah dilakukan uji coba instrumen dan analisis validitas menggunakan korelasi product moment Pearson, terdapat 3 soal yang memiliki nilai r_hitung lebih kecil dari r_tabel sehingga dinyatakan tidak valid dan harus dikeluarkan. Keputusan ini justru meningkatkan kualitas instrumen karena hanya soal yang benar-benar valid dan reliabel yang digunakan untuk pengambilan data. Dua soal per indikator juga sudah memadai secara proporsional untuk mengukur masing-masing dari enam indikator berpikir kritis Facione. Hasil uji reliabilitas Alpha Cronbach menunjukkan nilai di atas 0,70, artinya instrumen 12 soal ini reliabel.'),
-  tipBox("Pastikan Anda mengetahui nilai r_hitung dari 3 soal yang gugur, antisipasi jika ditanya lebih rinci."),
-  divider(),
-);
-
-// ── Q4: ANCOVA vs Uji-t ──────────────────────
-children.push(
-  qNum("4", "Statistik — Alasan Penggunaan ANCOVA"),
-  divider(C.penguji),
-  ...qaBox('Q', 'Dosen Penguji',
-    'Mengapa Anda menggunakan ANCOVA, bukan Independent Sample t-test yang lebih sederhana? Apa yang membuat ANCOVA lebih tepat untuk penelitian Anda?'),
-  ...qaBox('A', 'Saya (Khoirunisa)',
-    'ANCOVA dipilih karena lebih tepat secara statistik untuk desain pretest-posttest control group. Meskipun rata-rata pretest kedua kelas tidak jauh berbeda — 14,70 untuk kelas POE + AR dan 12,88 untuk kelas TSTS — secara statistik perbedaan ini tetap ada dan dapat memengaruhi hasil posttest jika tidak dikontrol. ANCOVA memungkinkan saya menggunakan nilai pretest sebagai kovariat untuk mengendalikan pengaruh kemampuan awal murid secara statistik, sehingga perbandingan posttest menjadi lebih adil dan murni mencerminkan efek perlakuan. Hasilnya adalah mean terkoreksi, bukan mean mentah. Independent Sample t-test tidak memiliki mekanisme ini — ia hanya membandingkan rata-rata posttest tanpa memperhitungkan perbedaan awal. Pemilihan ANCOVA juga sudah melewati empat uji prasyarat yang semuanya terpenuhi.'),
-  tipBox("Sebutkan: ANCOVA = membandingkan posttest setelah mengendalikan pretest. Ini adalah keunggulan utamanya."),
-  divider(),
-);
-
-// ── Q5: Eksplanasi terendah ──────────────────
-children.push(
-  qNum("5", "Hasil — Mengapa Indikator Eksplanasi Terendah?"),
-  divider(C.penguji),
-  ...qaBox('Q', 'Dosen Penguji',
-    'Hasil penelitian Anda menunjukkan indikator eksplanasi adalah yang terendah di kedua kelas, bahkan di kelas eksperimen yang menggunakan POE. Bukankah tahap Explain dalam model POE seharusnya secara langsung melatih eksplanasi? Mengapa indikator ini justru terendah?'),
-  ...qaBox('A', 'Saya (Khoirunisa)',
-    'Pertanyaan ini sangat kritis dan relevan. Anda benar bahwa tahap Explain dalam model POE secara teoritis melatih eksplanasi. Namun dalam implementasinya, terdapat kesenjangan antara desain ideal dan kondisi lapangan. Pertama, alokasi waktu tahap Explain tidak memadai — tahap Predict dan Observe yang melibatkan praktikum uji Benedict dan eksplorasi AR membutuhkan waktu lebih lama dari yang direncanakan, sehingga tahap Explain terpotong. Kedua, eksplanasi dalam konteks berpikir kritis menuntut murid menyusun argumen ilmiah yang runtut secara tertulis — ini adalah keterampilan kompleks yang membutuhkan latihan intensif dan tidak bisa berkembang optimal hanya dalam dua pertemuan. Ketiga, murid belum terbiasa dengan soal yang meminta justifikasi ilmiah yang komprehensif karena pembelajaran sebelumnya lebih banyak pada level mengingat. Ini menjadi saran saya: penelitian serupa perlu menambah pertemuan dan khususnya memperkuat porsi tahap Explain.'),
-  tipBox("Akui keterbatasan dengan jujur, tapi tunjukkan Anda sudah memahami mengapa dan apa solusinya."),
-  divider(),
-);
-
-// ── Q6: Regulasi diri tertinggi ─────────────
-children.push(
-  qNum("6", "Hasil — Mengapa Regulasi Diri Tertinggi?"),
-  divider(C.penguji),
-  ...qaBox('Q', 'Dosen Penguji',
-    'Sebaliknya, regulasi diri menjadi indikator tertinggi. Secara teoritis, regulasi diri adalah kemampuan metakognitif yang dianggap lebih tinggi dan lebih sulit. Bagaimana Anda menjelaskan temuan ini?'),
-  ...qaBox('A', 'Saya (Khoirunisa)',
-    'Ini adalah temuan yang menarik. Menurut Hafuzhatunnisa & Sukaesih (2024), regulasi diri melibatkan kesadaran metakognitif — kemampuan merefleksikan proses berpikir sendiri. Dalam model POE, regulasi diri secara alami terstimulasi di setiap pertemuan prediksi dengan observasi. Setiap kali murid membuat prediksi di tahap Predict, lalu mengamati hasilnya di tahap Observe, mereka secara otomatis dihadapkan pada momen konfrontasi kognitif — apakah prediksinya benar atau salah. Proses inilah yang secara konsisten melatih regulasi diri, karena murid harus mengevaluasi dan mengoreksi pemikiran awal mereka berdasarkan bukti pengamatan. Sementara eksplanasi membutuhkan keterampilan menulis argumen ilmiah yang lebih teknis, regulasi diri lebih bersifat reflektif dan secara intuitif terstimulasi oleh sintaks POE itu sendiri. Ini menunjukkan bahwa model POE sangat cocok untuk mengembangkan dimensi metakognitif berpikir kritis.'),
-  divider(),
-);
-
-// ── Q7: Validitas internal ──────────────────
-children.push(
-  qNum("7", "Metodologi — Ancaman Validitas Internal"),
-  divider(C.penguji),
-  ...qaBox('Q', 'Dosen Penguji',
-    'Dalam desain kuasi eksperimen, selalu ada potensi ancaman validitas internal seperti efek Hawthorne — murid bisa berkinerja lebih baik hanya karena merasa diteliti, bukan karena perlakuan. Bagaimana Anda mengantisipasi hal ini?'),
-  ...qaBox('A', 'Saya (Khoirunisa)',
-    'Terima kasih atas pertanyaan yang sangat metodologis ini. Saya menyadari bahwa efek Hawthorne adalah ancaman nyata dalam kuasi eksperimen. Langkah antisipasi yang saya lakukan antara lain: pertama, pengambilan data pretest dilakukan sebelum murid mengetahui status mereka sebagai kelas eksperimen atau kontrol. Kedua, keterlaksanaan pembelajaran dimonitor oleh observer independen — bukan saya sendiri — untuk meminimalkan bias observasi. Ketiga, penggunaan desain pretest-posttest memungkinkan saya melihat perubahan aktual, bukan hanya skor akhir. Keempat, kelas kontrol juga mendapat perlakuan aktif (TSTS), sehingga jika ada efek Hawthorne, ia berdampak pada kedua kelas secara relatif setara. Saya juga mengakui bahwa ini adalah keterbatasan inheren dari desain kuasi eksperimen yang tidak menggunakan randomisasi penuh — dan saya mencantumkannya dalam keterbatasan penelitian.'),
-  tipBox("Jika ditanya tentang randomisasi: jelaskan bahwa random assignment penuh tidak memungkinkan secara etis dan praktis di sekolah."),
-  divider(),
-);
-
-// ── Q8: Generalisasi ────────────────────────
-children.push(
-  qNum("8", "Validitas Eksternal — Generalisasi Temuan"),
-  divider(C.penguji),
-  ...qaBox('Q', 'Dosen Penguji',
-    'Penelitian Anda hanya dilakukan di satu sekolah, SMAN 113 Jakarta, dengan sampel 66 murid. Sejauh mana temuan ini dapat digeneralisasikan ke konteks lain, misalnya sekolah di luar Jakarta atau dengan karakteristik murid berbeda?'),
-  ...qaBox('A', 'Saya (Khoirunisa)',
-    'Pertanyaan ini menyentuh validitas eksternal penelitian. Saya mengakui bahwa generalisasi penelitian ini memiliki batasan. Temuan ini secara langsung berlaku untuk konteks murid kelas XI Peminatan Biologi di SMAN 113 Jakarta dengan karakteristik yang serupa. Namun demikian, ada beberapa alasan mengapa arah temuan ini kemungkinan besar relevan secara lebih luas: pertama, kerangka teori yang digunakan — POE dan AR — bukan spesifik untuk satu sekolah, dan sudah dibuktikan efektif oleh banyak penelitian di konteks berbeda (Fitrianingsih et al., 2021; Andriani & Ramadani, 2022; Rambe et al., 2025). Kedua, masalah rendahnya berpikir kritis pada materi sistem ekskresi adalah fenomena yang ditemukan di banyak wilayah Indonesia, bukan hanya Jakarta. Untuk generalisasi yang lebih kuat, saya merekomendasikan penelitian lanjutan di berbagai sekolah dengan karakteristik yang lebih beragam — ini saya cantumkan sebagai saran dalam penelitian ini.'),
-  divider(),
-);
-
-// ── Q9: AR Keterbatasan akses ────────────────
-children.push(
-  qNum("9", "Praktikalitas — Kendala Implementasi AR"),
-  divider(C.penguji),
-  ...qaBox('Q', 'Dosen Penguji',
-    'Penggunaan AR Assemblr EDU membutuhkan smartphone dan koneksi internet yang stabil. Bagaimana kondisi faktual implementasinya di SMAN 113? Apakah semua murid memiliki smartphone yang memadai? Apakah ada murid yang tidak bisa mengakses AR selama penelitian?'),
-  ...qaBox('A', 'Saya (Khoirunisa)',
-    'Pertanyaan praktis yang sangat penting. Dalam implementasinya, saya mengantisipasi potensi kesenjangan akses dengan mengatur strategi kelompok. Setiap kelompok kecil memiliki setidaknya satu atau dua smartphone yang mampu menjalankan aplikasi Assemblr EDU. Siswa yang tidak memiliki smartphone yang kompatibel dapat berkolaborasi dalam kelompok dan mengamati bersama. Secara umum, mayoritas murid kelas XI di SMAN 113 Jakarta sudah memiliki smartphone yang memadai. Koneksi internet di sekolah tersedia namun tidak selalu stabil — ini adalah keterbatasan yang saya akui dan cantumkan sebagai saran untuk menyediakan koneksi yang lebih stabil. Keterlaksanaan AR yang mencapai 98,84% menunjukkan bahwa secara keseluruhan implementasi berjalan dengan sangat baik meskipun ada tantangan teknis kecil di pertemuan pertama.'),
-  tipBox("Akui keterbatasan teknis, tetapi tunjukkan bahwa data keterlaksanaan 98,84% membuktikan implementasi tetap optimal."),
-  divider(),
-);
-
-// ── Q10: Etika Penelitian ────────────────────
-children.push(
-  qNum("10", "Etika Penelitian — Kesetaraan Perlakuan"),
-  divider(C.penguji),
-  ...qaBox('Q', 'Dosen Penguji',
-    'Secara etis, jika Anda sudah mengetahui bahwa kelas POE + AR lebih efektif, apakah kelas kontrol yang hanya mendapat TSTS + buku teks tidak dirugikan? Bagaimana Anda mempertimbangkan aspek etika ini?'),
-  ...qaBox('A', 'Saya (Khoirunisa)',
-    'Pertanyaan etika yang sangat penting. Pertama, saya tidak mengetahui secara pasti sebelum penelitian bahwa POE + AR pasti lebih efektif — penelitian ini justru bertujuan untuk membuktikan hipotesis tersebut secara empiris. Kedua, kelas kontrol tidak dibiarkan tanpa pembelajaran — mereka tetap mendapat model TSTS yang merupakan model kooperatif yang sudah terbukti memiliki manfaat pedagogis. Ini berbeda dengan desain placebo yang tidak etis. Ketiga, setelah penelitian selesai, sebagai bentuk pertanggungjawaban, saya berencana untuk berbagi hasil penelitian dengan guru biologi SMAN 113 agar kelas kontrol juga dapat memperoleh manfaat dari temuan ini di masa mendatang. Keempat, penelitian ini sudah melalui proses perizinan resmi dari sekolah yang menunjukkan persetujuan institusional. Ini adalah prosedur etika penelitian yang lazim dalam penelitian kuasi eksperimen pendidikan.'),
-  divider(),
-);
-
-// ── Q11: Pemilihan Assemblr EDU ─────────────
-children.push(
-  qNum("11", "Media — Alasan Memilih Assemblr EDU"),
-  divider(C.penguji),
-  ...qaBox('Q', 'Dosen Penguji',
-    'Ada banyak platform AR yang tersedia saat ini. Mengapa Anda memilih Assemblr EDU secara spesifik, bukan platform AR lain seperti CoSpaces, Google Expeditions, atau bahkan AR buatan sendiri?'),
-  ...qaBox('A', 'Saya (Khoirunisa)',
-    'Pemilihan Assemblr EDU didasarkan pada empat pertimbangan: Pertama, aksesibilitas — Assemblr EDU dapat dioperasikan langsung melalui smartphone iOS maupun Android tanpa perangkat khusus, sehingga tidak membutuhkan investasi infrastruktur tambahan dari sekolah. Kedua, ketersediaan konten biologi — Assemblr EDU memiliki library konten 3D yang mencakup anatomi organ tubuh manusia, termasuk organ sistem ekskresi seperti ginjal, kulit, dan paru-paru, sehingga relevan langsung dengan materi penelitian. Ketiga, kemudahan penggunaan — antarmukanya intuitif dan murid tidak memerlukan pelatihan teknis yang lama untuk mengoperasikannya. Keempat, ada dukungan penelitian sebelumnya: Rambe et al. (2025) dan Bawono & Putra (2025) sudah membuktikan efektivitas Assemblr EDU dalam konteks pendidikan biologi di Indonesia. Platform lain seperti CoSpaces lebih fokus pada pembuatan konten kreatif, bukan konsumsi konten 3D terstruktur.'),
-  divider(),
-);
-
-// ── Q12: Pertanyaan Tajam ──────────────────
-children.push(
-  qNum("12", "Kritis — Apakah Peningkatan Murni dari Perlakuan?"),
-  divider(C.penguji),
-  ...qaBox('Q', 'Dosen Penguji',
-    'Bagaimana Anda memastikan bahwa peningkatan kemampuan berpikir kritis yang terjadi benar-benar disebabkan oleh model POE berbantuan AR, dan bukan oleh faktor lain seperti kualitas guru, motivasi murid yang lebih tinggi di kelas eksperimen, atau efek novelty dari teknologi AR itu sendiri?'),
-  ...qaBox('A', 'Saya (Khoirunisa)',
-    'Ini adalah pertanyaan paling kritis yang menyentuh inti validitas internal penelitian. Saya memiliki beberapa argumen: Pertama, guru yang mengajar kedua kelas adalah guru yang sama — Ibu Dwi Ambar Asih, M.Si. — sehingga variabel kualitas guru terkontrol. Kedua, penggunaan ANCOVA dengan pretest sebagai kovariat sudah mengendalikan perbedaan motivasi awal antar kelas secara statistik — mean terkoreksi yang saya laporkan sudah memperhitungkan kemampuan awal. Ketiga, terkait efek novelty AR: ini memang merupakan keterbatasan yang tidak dapat sepenuhnya dieliminasi dalam penelitian jangka pendek. Namun data keterlaksanaan lembar observasi menunjukkan bahwa murid benar-benar terlibat aktif dalam tahapan kognitif POE, bukan sekadar terkesan oleh teknologinya. Keempat, desain pretest-posttest memungkinkan saya mengukur perubahan nyata, bukan hanya kondisi akhir. Saya akui bahwa untuk mengontrol semua faktor konfounding secara sempurna, diperlukan desain eksperimen murni dengan randomisasi penuh — yang tidak memungkinkan secara praktis dan etis di sekolah.'),
-  tipBox("Jawaban ini menunjukkan kedewasaan metodologis. Akui keterbatasan tetapi tunjukkan langkah mitigasi yang sudah dilakukan."),
-  divider(),
-);
-
-// ─── TIPS PENUTUP ────────────────────────────
-children.push(
-  sectionHeader("★", "TIPS MENGHADAPI TEKANAN PENGUJI", C.tipsCol),
-
-  new Paragraph({ ...sp(100,40),
-    children: [new TextRun({ text: "Jika tiba-tiba blank atau tidak tahu jawabannya:", bold: true, size: 22, color: C.tipsCol, font: "Arial" })]
-  }),
-  scriptLine('"Terima kasih atas pertanyaannya yang sangat mendalam. Izinkan saya menjawab dengan merujuk pada data yang saya peroleh di lapangan..."'),
-
-  new Paragraph({ ...sp(80,40),
-    children: [new TextRun({ text: "Jika penguji memotong atau tidak setuju:", bold: true, size: 22, color: C.tipsCol, font: "Arial" })]
-  }),
-  scriptLine('"Terima kasih atas koreksinya, Bapak/Ibu. Saya mencatat masukan tersebut dan akan menjadikannya perbaikan dalam penelitian ini."'),
-
-  new Paragraph({ ...sp(80,40),
-    children: [new TextRun({ text: "Jika ada ketidaksesuaian data yang ditemukan penguji:", bold: true, size: 22, color: C.tipsCol, font: "Arial" })]
-  }),
-  scriptLine('"Benar, Bapak/Ibu. Terdapat revisi pada bagian tersebut yang sudah diperbaiki di dokumen skripsi final. Mohon maaf atas ketidaksesuaian dalam PPT yang belum diperbarui."'),
-
-  new Paragraph({ ...sp(80,40),
-    children: [new TextRun({ text: "Tetap ingat: Penguji bukan musuh Anda.", bold: true, size: 22, color: C.red, font: "Arial" })]
-  }),
-  scriptLine("Mereka ingin memastikan Anda memahami penelitian Anda sendiri secara mendalam. Kepercayaan diri yang tenang jauh lebih meyakinkan daripada jawaban yang terburu-buru."),
-
-  empty(200),
-  new Paragraph({ alignment: AlignmentType.CENTER, ...sp(0,40),
-    children: [new TextRun({ text: "Semangat! Kamu sudah berjuang sangat jauh untuk sampai di sini. 🌟",
-      bold: true, size: 24, color: C.navy, font: "Arial" })]
-  }),
-  new Paragraph({ alignment: AlignmentType.CENTER, ...sp(0,80),
-    children: [new TextRun({ text: "Percayakan pada proses dan data yang sudah kamu kerjakan dengan sepenuh hati.",
-      italics: true, size: 22, color: C.gray, font: "Arial" })]
-  }),
-  new Paragraph({ alignment: AlignmentType.RIGHT, ...sp(200,0),
-    children: [new TextRun({ text: "Dibuat oleh Claude — Asisten AI Anthropic",
-      size: 18, color: "BBBBBB", italics: true, font: "Arial" })]
-  }),
-);
-
-// ─── GENERATE FILE ──────────────────────────
-const doc = new Document({
-  styles: {
-    default: { document: { run: { font: "Arial", size: 22 } } }
-  },
-  sections: [{
-    properties: {
-      page: {
-        size: { width: 12240, height: 15840 },
-        margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }
-      }
-    },
-    children
-  }]
-});
-
-Packer.toBuffer(doc).then(buffer => {
-  fs.writeFileSync('/mnt/user-data/outputs/Script_Presentasi_dan_Simulasi_Ujian.docx', buffer);
-  console.log('DONE: File berhasil dibuat!');
-});
-JSEOF
-echo "File JS siap"
+            Packer.toBlob(doc).then(blob => {
+                saveAs(blob, "dokumen_hasil.docx");
+            });
+        });
+    </script>
+</body>
+</html>
